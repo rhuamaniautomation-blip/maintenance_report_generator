@@ -1,13 +1,21 @@
+"""
+================================================================================
+SISTEMA INSTITUCIONAL DE GENERACIÓN DE INFORMES TÉCNICOS DE MANTENIMIENTO
+Versión: 3.0 (Optimizado para Personal Técnico - Estándar APA 7.ª Edición)
+Desarrollado con Python 3.11+, Streamlit, Google GenAI, python-docx y ReportLab.
+================================================================================
+"""
+
 import io
 import os
-import json
+import re
 from datetime import datetime, date
 import streamlit as st
 from PIL import Image
 import pandas as pd
 from google import genai
 
-# Librerías para generación de documentos Word (.docx)
+# Librerías profesionales para generación de documentos Word (.docx)
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -15,28 +23,29 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-# Librerías para generación de documentos PDF (ReportLab)
+# Librerías profesionales para generación de documentos PDF (ReportLab)
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfgen import canvas
 
 # ==============================================================================
-# CONFIGURACIÓN INICIAL Y DE PÁGINA STREAMLIT
+# 1. CONFIGURACIÓN INICIAL Y DE PÁGINA STREAMLIT
 # ==============================================================================
 st.set_page_config(
-    page_title="Sistema Institucional de Informes de Mantenimiento",
+    page_title="Generador de Informes Técnicos de Mantenimiento",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS Avanzados para Apariencia Institucional y Corporativa
+# Estilos CSS Profesionales para la Interfaz Web
 st.markdown("""
     <style>
-    /* Estilos Generales */
     .main {
         background-color: #F8FAFC;
     }
@@ -44,33 +53,24 @@ st.markdown("""
         background-color: rgba(255, 255, 255, 0.95);
     }
     .main-header {
-        font-size: 2.3rem;
+        font-size: 2.1rem;
         color: #0F172A;
         font-weight: 800;
         letter-spacing: -0.02em;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.1rem;
     }
     .sub-header {
-        font-size: 1.05rem;
+        font-size: 1.0rem;
         color: #475569;
-        margin-bottom: 1.8rem;
+        margin-bottom: 1.5rem;
     }
-    .card {
+    .card-container {
         background-color: #FFFFFF;
         padding: 1.5rem;
         border-radius: 0.75rem;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         border: 1px solid #E2E8F0;
-        margin-bottom: 1.5rem;
-    }
-    .status-badge {
-        background-color: #EFF6FF;
-        color: #1D4ED8;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: inline-block;
+        margin-bottom: 1.2rem;
     }
     .stButton>button {
         border-radius: 0.5rem;
@@ -80,10 +80,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# GESTIÓN DE CLIENTE GEMINI API
+# 2. GESTIÓN DE CLIENTE GEMINI API
 # ==============================================================================
 def get_gemini_client():
-    """Obtiene y valida la instancia del cliente para la API de Gemini."""
+    """Inicializa y valida el cliente de la API de Google GenAI de forma segura."""
     api_key = None
     if "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
@@ -95,174 +95,141 @@ def get_gemini_client():
     return genai.Client(api_key=api_key)
 
 # ==============================================================================
-# BARRA LATERAL - CONFIGURACIÓN Y METADATOS DEL SISTEMA
+# 3. BARRA LATERAL SIMPLIFICADA PARA PERSONAL TÉCNICO
 # ==============================================================================
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/engineering.png", width=70)
-    st.markdown("## **Mantenimiento & Confiabilidad**")
-    st.markdown("*Sistema Institucional v2.5*")
+    st.image("https://img.icons8.com/color/96/engineering.png", width=65)
+    st.markdown("## **Mantenimiento Industrial**")
+    st.markdown("*Módulo de Reportes Técnicos*")
     st.markdown("---")
     
-    # Autenticación de API Key si no está configurada en secrets.toml
+    # Autenticación de API Key si no está en secrets.toml
     if "GEMINI_API_KEY" not in st.secrets:
-        st.subheader("🔑 Autenticación")
+        st.subheader("🔑 Credenciales")
         api_key_in = st.text_input("Gemini API Key:", type="password", key="gemini_api_key_input")
         if not api_key_in:
-            st.info("💡 Ingrese su API Key para habilitar la generación por IA.")
+            st.info("💡 Ingrese su clave API para activar el asistente.")
         st.markdown("---")
 
-    st.subheader("📋 Parámetros Institucionales")
+    st.subheader("📋 Datos Generales")
     
-    empresa_nombre = st.text_input("Empresa / Planta Industrial", "Planta Industrial Petroquímica - Complejo Sur")
-    unidad_operativa = st.text_input("Unidad Operativa / Área", "Unidad de Hidrotratamiento (U-200)")
+    empresa_nombre = st.text_input("Empresa / Planta", "ORICA")
+    unidad_operativa = st.text_input("Unidad / Área", "Unidad de Detonadores")
     
     tipo_informe = st.selectbox(
-        "Tipo de Informe Técnico",
+        "Tipo de Informe",
         [
             "Informe Ejecutivo de Mantenimiento",
-            "Informe de Falla y Análisis Causa Raíz (RCA)",
-            "Informe de Investigación de Incidente",
-            "Informe de Integridad Mecánica",
-            "Informe de Ensayos No Destructivos (NDT)",
-            "Informe de Incidente Operacional",
+            "Informe de Falla",
+            "Informe de Investigación",
             "Informe de Mantenimiento Correctivo",
-            "Informe de Mantenimiento Preventivo / Overhaul",
-            "Informe de Confiabilidad Operacional"
+            "Informe de Mantenimiento Preventivo",
+            "Informe de Incidente Operacional"
         ]
-    )
-    
-    criticidad_equipo = st.selectbox(
-        "Criticidad del Equipo (RCM)",
-        ["Alta (Criticidad A - Vital)", "Media (Criticidad B - Esencial)", "Baja (Criticidad C - Secundario)"]
     )
 
     st.markdown("---")
-    st.subheader("👤 Datos del Personal")
-    elaborado_por = st.text_input("Elaborado por (Ingeniero)", "Ing. Roger Huamani Torres")
-    cargo_elaborador = st.text_input("Cargo", "Ingeniero Senior de Confiabilidad y Mantenimiento")
-    revisado_por = st.text_input("Revisado / Aprobado por", "Ing. Gerente de Planta y Operaciones")
-    fecha_evento = st.date_input("Fecha de Ocurrencia / Trabajo", date.today())
+    st.subheader("👤 Responsable")
+    elaborado_por = st.text_input("Elaborado por", "Ing. Roger Huamani Torres")
+    cargo_elaborador = st.text_input("Cargo", "Superintendente de Mantenimiento")
+    fecha_evento = st.date_input("Fecha del Evento", date.today())
 
 # ==============================================================================
-# VISTA PRINCIPAL Y NAVEGACIÓN
+# 4. INTERFAZ PRINCIPAL STREAMLIT
 # ==============================================================================
 st.markdown('<div class="main-header">Generador Inteligente de Informes de Mantenimiento</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Plataforma institucional para la documentación técnica, análisis de causa raíz y estandarización normativa (ISO 55001 / ISO 9001 / APA 7.ª Ed.).</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Plataforma técnica simplificada para el registro rápido de eventos, redacción estructurada por IA y exportación corporativa bajo norma APA.</div>', unsafe_allow_html=True)
 
-# Pestañas principales de trabajo
-tab_datos, tab_criticidad, tab_evidencias, tab_generacion = st.tabs([
-    "📝 Contexto & Datos", 
-    "📊 Matriz FMEA / RCM", 
-    "📷 Evidencias Fotográficas", 
-    "🚀 Generación & Exportación"
+# Pestañas de navegación directas para el técnico
+tab_datos, tab_evidencias, tab_generacion = st.tabs([
+    "📝 1. Datos del Activo & Evento", 
+    "📷 2. Evidencias Fotográficas", 
+    "🚀 3. Generación & Exportación"
 ])
 
 # ------------------------------------------------------------------------------
-# TAB 1: CONTEXTO Y DATOS DEL EVENTO
+# PESTAÑA 1: DATOS DEL ACTIVO Y EVENTO
 # ------------------------------------------------------------------------------
 with tab_datos:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### 1. Datos del Equipo e Identificación")
-    col_eq1, col_eq2, col_eq3 = st.columns(3)
-    with col_eq1:
-        equipo_tag = st.text_input("Tag del Equipo", "P-101A", help="Identificador único del activo.")
-    with col_eq2:
-        equipo_nombre = st.text_input("Nombre / Descripción", "Bomba Centrífuga Multietapa de Alimentación")
-    with col_eq3:
-        horas_operacion = st.number_input("Horas acumuladas de operación (TTSO)", min_value=0, value=14200, step=100)
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
+    st.markdown("### Identificación del Activo")
+    col_e1, col_e2, col_e3 = st.columns(3)
+    with col_e1:
+        equipo_tag = st.text_input("Tag del Equipo", "230-1", help="Identificador único del activo.")
+    with col_e2:
+        equipo_nombre = st.text_input("Nombre del Equipo", "Carga de Retardos (230-1)")
+    with col_e3:
+        horas_operacion = st.number_input("Horas de Operación (TTSO)", min_value=0, value=14200, step=100)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### 2. Formulario de Contexto del Evento")
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
+    st.markdown("### Contexto y Descripción del Evento")
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         contexto_evento = st.text_area(
-            "Contexto Operacional del Evento",
-            placeholder="Describa el régimen de trabajo, carga del proceso, temperatura ambiente, fluctuaciones previas...",
-            height=140
+            "Contexto del Evento",
+            placeholder="Describa el régimen de trabajo, condiciones iniciales o proceso en curso...",
+            height=130
         )
         descripcion_incidente = st.text_area(
-            "Descripción Inicial del Incidente / Falla",
-            placeholder="Detalle la manifestación inicial, disparos de alarmas, enclavamientos, fugas, ruidos anómalos o vibraciones...",
-            height=140
+            "Descripción Inicial del Incidente",
+            placeholder="Detalle la manifestación inicial, anomalías detectadas, ruidos o alarmas...",
+            height=130
         )
         hallazgos_tecnicos = st.text_area(
-            "Hallazgos e Inspección Preliminar",
-            placeholder="Ingrese los hallazgos físicos visuales, mediciones dimensionales, análisis de lubricantes, holguras, desgastes...",
-            height=140
+            "Hallazgos Encontrados",
+            placeholder="Ingrese los hallazgos físicos visuales, desgaste, fugas, daños observados...",
+            height=130
         )
     
     with col_t2:
         trabajos_ejecutados = st.text_area(
-            "Trabajos y Procedimientos Ejecutados",
-            placeholder="Enumere las tareas de desacople, desmontaje, metrología, cambio de repuestos, alineación láser, balanceo...",
-            height=140
+            "Trabajos Realizados",
+            placeholder="Enumere las tareas correctivas, reemplazos de piezas, ajustes o pruebas...",
+            height=130
         )
         repuestos_utilizados = st.text_area(
             "Repuestos / Materiales Empleados",
-            placeholder="Ej: 2x Rodamientos SKF 6316 C3, 1x Kit de Sellos Mecánicos Burgmann, 5L de Grasa Sintética Mobilith...",
-            height=140
+            placeholder="Ej: O-rings de repuesto, sellos, lubricantes, componentes nuevos...",
+            height=130
         )
         info_adicional = st.text_area(
-            "Observaciones Técnicas e Historial Previo",
-            placeholder="Información sobre análisis de vibraciones previos, intervenciones anteriores, modificaciones de diseño...",
-            height=140
+            "Observaciones Adicionales (Opcional)",
+            placeholder="Cualquier información técnica complementaria relevante...",
+            height=130
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# TAB 2: MATRIZ DE CRITICIDAD Y FMEA (RCM)
-# ------------------------------------------------------------------------------
-with tab_criticidad:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### Evaluación Preliminar de Modos de Falla (FMEA / RCM)")
-    st.info("Esta sección permite estructurar parámetros cuantitativos que la Inteligencia Artificial integrará en la Evaluación Mecánica, Eléctrica y Riesgos.")
-    
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        severidad = st.slider("Severidad del Impacto (S: 1-10)", 1, 10, 7, help="1: Insignificante, 10: Catastrófico para seguridad o producción.")
-    with col_f2:
-        ocurrencia = st.slider("Probabilidad de Ocurrencia (O: 1-10)", 1, 10, 5, help="1: Muy improbable, 10: Frecuencia extremadamente alta.")
-    with col_f3:
-        deteccion = st.slider("Facilidad de Detección (D: 1-10)", 1, 10, 4, help="1: Certeza de detección temprana, 10: Indetectable previo a falla.")
-    
-    rpn = severidad * ocurrencia * deteccion
-    st.markdown(f"**Número de Prioridad de Riesgo (NPR / RPN Calculado):** `<span class='status-badge'>{rpn} / 1000</span>`", unsafe_allow_html=True)
-    
-    modo_falla_p = st.text_input("Modo de Falla Principal Identificado / Presunto", "Desgaste Abrasivo y Fatiga Superficial en Rodamiento Radial Lado Libres")
-    efecto_falla_p = st.text_input("Efecto Potencial en la Planta", "Pérdida de capacidad de bombeo, riesgo de contaminación por lubricante y paro de unidad de refinación.")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# TAB 3: EVIDENCIAS FOTOGRÁFICAS (APA 7.ª EDICIÓN)
+# PESTAÑA 2: EVIDENCIAS FOTOGRÁFICAS (MÚLTIPLES IMÁGENES LIBRES)
 # ------------------------------------------------------------------------------
 with tab_evidencias:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### Carga de Registro Fotográfico y Validación Normativa")
-    st.caption("Conforme a la norma ISO 9001 y los estándares de documentación técnica APA 7.ª edición, cada evidencia debe contar obligatoriamente con una descripción explicativa para garantizar la trazabilidad.")
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
+    st.markdown("### Carga de Fotografías y Descripciones")
+    st.info("💡 Puede cargar todas las imágenes que necesite. Cada fotografía requiere obligatoriamente su descripción técnica para cumplir con el formato APA.")
     
     uploaded_files = st.file_uploader(
-        "Seleccionar imágenes de evidencia (Formatos soportados: JPG, JPEG, PNG)",
+        "Seleccione las imágenes de evidencia (Formatos: JPG, JPEG, PNG)",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True
     )
     
     image_data_list = []
     if uploaded_files:
-        st.success(f"Se han cargado {len(uploaded_files)} imágenes correctamente.")
+        st.success(f"Se han cargado {len(uploaded_files)} imágenes para el registro fotográfico.")
         st.markdown("---")
         
         for idx, file_item in enumerate(uploaded_files):
-            col_i1, col_i2 = st.columns([1, 2])
-            with col_i1:
+            col_img, col_desc = st.columns([1, 2])
+            with col_img:
                 img_obj = Image.open(file_item)
-                st.image(img_obj, caption=f"Evidencia N.° {idx+1}", use_container_width=True)
-            with col_i2:
+                st.image(img_obj, caption=f"Imagen Original {idx+1}", use_container_width=True)
+            with col_desc:
                 desc_input = st.text_input(
-                    f"Descripción técnica obligatoria para Figura {idx+1}:",
+                    f"Descripción obligatoria para Figura {idx+1}:",
                     key=f"img_desc_key_{idx}",
-                    placeholder="Ejemplo: Aspecto de la pista interna del rodamiento evidenciando desconchado (spalling) severo."
+                    placeholder="Ej: Vista general de la estación evidenciando daños y residuos..."
                 )
                 image_data_list.append({
                     "file_name": file_item.name,
@@ -271,71 +238,62 @@ with tab_evidencias:
                     "index": idx + 1
                 })
     else:
-        st.warning("No se han subido archivos de imagen. El sistema requiere al menos una evidencia con descripción técnica para generar el informe final.")
+        st.warning("No se han cargado imágenes todavía. Es recomendable adjuntar al menos una evidencia fotográfica.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# TAB 4: GENERACIÓN CON IA Y EXPORTACIÓN
+# PESTAÑA 3: GENERACIÓN Y EXPORTACIÓN AUTOMÁTICA
 # ------------------------------------------------------------------------------
 with tab_generacion:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### Generación Automatizada del Informe")
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
+    st.markdown("### Consolidación y Aprobación del Informe")
+    st.markdown("El sistema consolidará la información en un formato resumido, técnico, profesional y directo para aprobación inmediata.")
     
-    # Validaciones obligatorias antes de procesar
     has_images = len(image_data_list) > 0
     missing_desc = any(not img["description"].strip() for img in image_data_list) if has_images else False
     
-    if not has_images:
-        st.error("⚠️ Validación pendiente: Debe cargar al menos una imagen de evidencia fotográfica en la pestaña 'Evidencias Fotográficas'.")
-    elif missing_desc:
-        st.error("⚠️ Validación pendiente: Existen imágenes cargadas que no tienen descripción. Por favor complete todos los campos de descripción.")
+    if has_images and missing_desc:
+        st.error("⚠️ Atención: Hay imágenes cargadas sin descripción asignada. Por favor complete todas las descripciones.")
     else:
-        st.success("✅ Todas las validaciones de datos y evidencias han sido superadas satisfactoriamente.")
+        st.success("✅ Datos listos para la generación automática por Inteligencia Artificial.")
     
-    btn_generar = st.button("🧠 Generar Informe Técnico de Ingeniería", type="primary", use_container_width=True)
+    btn_generar = st.button("🚀 Generar Informe Técnico", type="primary", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    if btn_generar and has_images and not missing_desc:
+    if btn_generar and not missing_desc:
         client = get_gemini_client()
         if not client:
-            st.error("❌ No se encontró la clave de API de Gemini. Verifique su archivo secrets.toml o la clave ingresada en la barra lateral.")
+            st.error("❌ No se detectó la API Key de Gemini. Configúrela en los secretos o en la barra lateral.")
         else:
-            with st.spinner("Procesando análisis de ingeniería, infiriendo causa raíz y generando el informe completo con IA..."):
+            with st.spinner("Generando informe técnico resumido, estructurado y con formato profesional..."):
                 
-                # Resumen de imágenes para el prompt
-                evidencias_prompt_str = "\n".join([f"- Figura {item['index']}: {item['description']}" for item in image_data_list])
+                evidencias_prompt_str = "\n".join([f"- Figura {item['index']}: {item['description']}" for item in image_data_list]) if image_data_list else "Sin imágenes adjuntas."
                 
-                # Construcción del Prompt Técnico Completo
+                # Prompt optimizado para respuestas concisas, técnicas y estructuradas con viñetas limpias
                 prompt_master = f"""
-Actúa como un Ingeniero Senior de Mantenimiento, Ingeniero de Confiabilidad e Investigador de Incidentes Industriales con más de 25 años de experiencia en plantas de alta disponibilidad.
-Analiza minuciosamente la información suministrada y genera un Informe Técnico Corporativo de Mantenimiento de nivel ejecutivo.
+Actúa como un Ingeniero Senior de Mantenimiento con amplia experiencia en plantas industriales. 
+Genera un Informe Técnico de Mantenimiento corporativo basado estrictamente en la información suministrada, manteniendo un tono técnico, conciso, directo y profesional (evitando explicaciones exageradas o redundantes).
 
-Parámetros Generales:
+Parámetros:
 - Empresa: {empresa_nombre}
 - Unidad Operativa: {unidad_operativa}
 - Tipo de Informe: {tipo_informe}
 - Equipo: {equipo_tag} - {equipo_nombre}
-- Horas Acumuladas: {horas_operacion} hrs
-- Criticidad RCM: {criticidad_equipo}
-- RPN Evaluado (FMEA): {rpn} (Severidad: {severidad}, Ocurrencia: {ocurrencia}, Detección: {deteccion})
-- Modo de Falla Principal: {modo_falla_p}
-- Efecto Potencial: {efecto_falla_p}
+- Horas de Operación: {horas_operacion} hrs
 - Elaborado por: {elaborado_por} ({cargo_elaborador})
 
 Datos del Evento:
-- Contexto Operacional: {contexto_evento}
+- Contexto: {contexto_evento}
 - Descripción del Incidente: {descripcion_incidente}
-- Hallazgos Técnicos: {hallazgos_tecnicos}
-- Trabajos Ejecutados: {trabajos_ejecutados}
-- Repuestos Empleados: {repuestos_utilizados}
-- Observaciones Adicionales: {info_adicional}
+- Hallazgos: {hallazgos_tecnicos}
+- Trabajos Realizados: {trabajos_ejecutados}
+- Repuestos: {repuestos_utilizados}
+- Información Adicional: {info_adicional}
 
-Registro de Evidencias Fotográficas:
+Evidencias Fotográficas Registradas:
 {evidencias_prompt_str}
 
-REQUISITOS OBLIGATORIOS DE ESTRUCTURA Y REDACCIÓN:
-La respuesta DEBE contener exactamente los siguientes 19 encabezados numerados en formato Markdown (utilizando ## para cada título). Desarrolla cada punto con análisis profundo, terminología técnica avanzada de ingeniería, sin texto robótico, sin repeticiones genéricas y con total coherencia técnica.
-
+ESTRUCTURA OBLIGATORIA (Utiliza exactamente estos 19 encabezados numerados en formato Markdown con '##'):
 ## 1. Resumen Ejecutivo
 ## 2. Información General
 ## 3. Antecedentes
@@ -356,7 +314,7 @@ La respuesta DEBE contener exactamente los siguientes 19 encabezados numerados e
 ## 18. Evidencias Fotográficas
 ## 19. Referencias
 
-Genera el texto directamente iniciando en la sección 1.
+REQUISITO IMPORTANTE SOBRE VIÑETAS: Cuando utilices listas o enumeraciones de puntos clave dentro de las secciones, utiliza viñetas con asteriscos o guiones (ej. * Elemento o - Elemento) para que el sistema las preserve adecuadamente. Sé directo y claro.
 """
                 try:
                     res_genai = client.models.generate_content(
@@ -373,148 +331,170 @@ Genera el texto directamente iniciando en la sección 1.
                         "horas": horas_operacion,
                         "elaborador": elaborado_por,
                         "cargo": cargo_elaborador,
-                        "revisador": revisado_por,
                         "fecha": str(fecha_evento),
                         "imagenes": image_data_list
                     }
-                    st.success("¡El informe técnico ha sido generado satisfactoriamente!")
+                    st.success("¡Informe generado con éxito! Revise la vista previa y proceda a descargar.")
                 except Exception as ex:
-                    st.error(f"Error durante la generación con la API de Gemini: {ex}")
+                    st.error(f"Error al conectar con la API de Gemini: {ex}")
 
 # ==============================================================================
-# VISUALIZACIÓN Y EXPORTACIÓN DEL INFORME TÉCNICO
+# 5. VISUALIZACIÓN Y EXPORTACIÓN PROFESIONAL (WORD Y PDF)
 # ==============================================================================
 if "informe_generado" in st.session_state:
     st.markdown("---")
-    st.markdown("## 📄 Vista Previa del Informe Generado")
+    st.markdown("## 📄 Vista Previa del Informe Técnico")
     
     informe_md = st.session_state["informe_generado"]
     meta_inf = st.session_state["datos_informe"]
     
-    with st.expander("Ver informe completo en formato Markdown", expanded=True):
+    with st.expander("Expandir para visualizar el contenido completo", expanded=True):
         st.markdown(informe_md)
-        
-        st.markdown("### 📷 Registro de Evidencias Fotográficas")
-        for item in meta_inf["imagenes"]:
-            st.image(
-                item["image_obj"], 
-                caption=f"Figura {item['index']}. {item['description']} (Fuente: Elaboración propia)", 
-                use_container_width=True
-            )
+        if meta_inf["imagenes"]:
+            st.markdown("### Registro Fotográfico Asociado")
+            for item in meta_inf["imagenes"]:
+                st.image(
+                    item["image_obj"], 
+                    caption=f"Figura {item['index']}. {item['description']} (Fuente: Elaboración propia)", 
+                    use_container_width=True
+                )
 
     st.markdown("---")
-    st.markdown("### 📥 Exportación Documental Institucional")
+    st.markdown("### 📥 Opciones de Exportación")
     
-    col_exp_docx, col_exp_pdf = st.columns(2)
+    col_w, col_p = st.columns(2)
     
     # --------------------------------------------------------------------------
-    # EXPORTACIÓN A MICROSOFT WORD (.DOCX)
+    # EXPORTACIÓN A WORD (.DOCX) - JUSTIFICADO, INTERLINEADO Y VIÑETAS
     # --------------------------------------------------------------------------
-    with col_exp_docx:
-        if st.button("📥 Generar Documento Word (.docx)", use_container_width=True):
+    with col_w:
+        if st.button("📥 Descargar Informe en Word (.docx)", use_container_width=True):
             doc = Document()
             
-            # Margen institucional (1 pulgada por lado)
+            # Márgenes de 1 pulgada
             for section in doc.sections:
                 section.top_margin = Inches(1)
                 section.bottom_margin = Inches(1)
                 section.left_margin = Inches(1)
                 section.right_margin = Inches(1)
 
-            # Portada Corporativa
+            # Portada de encabezado
             p_head = doc.add_paragraph()
             p_head.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-            r_head = p_head.add_run(f"{meta_inf['empresa']}\n{meta_inf['unidad']}")
+            r_head = p_head.add_run(f"{meta_inf['empresa']} | {meta_inf['unidad']}")
             r_head.font.size = Pt(9)
             r_head.font.color.rgb = RGBColor(100, 116, 139)
             
-            doc.add_paragraph().alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_paragraph()
             
             p_title = doc.add_paragraph()
             p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
             r_title = p_title.add_run(f"INFORME TÉCNICO DE MANTENIMIENTO\n{meta_inf['tipo'].upper()}")
-            r_title.font.size = Pt(18)
+            r_title.font.size = Pt(16)
             r_title.font.bold = True
             r_title.font.color.rgb = RGBColor(15, 23, 42)
             
             p_sub = doc.add_paragraph()
             p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
             r_sub = p_sub.add_run(f"ACTIVO: {meta_inf['tag']} - {meta_inf['equipo']}")
-            r_sub.font.size = Pt(12)
+            r_sub.font.size = Pt(11)
             r_sub.font.bold = True
             r_sub.font.color.rgb = RGBColor(29, 78, 216)
             
-            doc.add_paragraph().alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_paragraph()
             
-            # Tabla de metadatos en portada Word
-            table_meta = doc.add_table(rows=5, cols=2)
+            # Tabla de metadatos en Word
+            table_meta = doc.add_table(rows=4, cols=2)
             table_meta.alignment = WD_TABLE_ALIGNMENT.CENTER
-            table_data = [
+            meta_rows = [
                 ("Fecha de Emisión:", meta_inf["fecha"]),
-                ("Horas de Operación (TTSO):", f"{meta_inf['horas']} Horas"),
+                ("Horas de Operación:", f"{meta_inf['horas']} hrs"),
                 ("Elaborado por:", f"{meta_inf['elaborador']} ({meta_inf['cargo']})"),
-                ("Revisado / Aprobado por:", meta_inf["revisador"]),
-                ("Estándares de Cumplimiento:", "ISO 55001 / ISO 9001 / APA 7.ª Ed.")
+                ("Estándar Normativo:", "APA 7.ª Edición / Buenas Prácticas Industriales")
             ]
-            for i, (label, val) in enumerate(table_data):
-                row_cells = table_meta.rows[i].cells
-                row_cells[0].text = label
-                row_cells[0].paragraphs[0].runs[0].font.bold = True
-                row_cells[1].text = val
+            for i, (label, val) in enumerate(meta_rows):
+                cells = table_meta.rows[i].cells
+                cells[0].text = label
+                cells[0].paragraphs[0].runs[0].font.bold = True
+                cells[0].paragraphs[0].runs[0].font.size = Pt(10)
+                cells[1].text = val
+                cells[1].paragraphs[0].runs[0].font.size = Pt(10)
             
             doc.add_page_break()
             
-            # Cuerpo del Documento
+            # Procesamiento de líneas del informe para Word (con soporte de viñetas y justificación)
             for line in informe_md.split('\n'):
                 line_str = line.strip()
                 if line_str.startswith("## "):
                     p_h = doc.add_heading(line_str.replace("## ", ""), level=2)
                     p_h.runs[0].font.color.rgb = RGBColor(15, 23, 42)
+                    p_h.paragraph_format.space_before = Pt(12)
+                    p_h.paragraph_format.space_after = Pt(4)
                 elif line_str.startswith("# "):
                     p_h = doc.add_heading(line_str.replace("# ", ""), level=1)
                     p_h.runs[0].font.color.rgb = RGBColor(30, 58, 138)
-                elif line_str.startswith("### "):
-                    doc.add_heading(line_str.replace("### ", ""), level=3)
+                elif line_str.startswith("* ") or line_str.startswith("- "):
+                    # Párrafo con viñeta conservada
+                    p_bullet = doc.add_paragraph(style='List Bullet')
+                    run_b = p_bullet.add_run(line_str[2:].strip())
+                    run_b.font.size = Pt(10.5)
+                    run_b.font.name = 'Calibri'
+                    p_bullet.paragraph_format.line_spacing = 1.15
+                    p_bullet.paragraph_format.space_after = Pt(3)
+                    p_bullet.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
                 elif line_str:
-                    p = doc.add_paragraph(line_str)
+                    p = doc.add_paragraph()
+                    run = p.add_run(line_str)
+                    run.font.size = Pt(10.5)
+                    run.font.name = 'Calibri'
                     p.paragraph_format.line_spacing = 1.15
-                    p.paragraph_format.space_after = Pt(4)
+                    p.paragraph_format.space_after = Pt(6)
+                    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
-            # Inserción de Fotografías con Formato APA 7 en Word
-            doc.add_heading("Anexo: Evidencias Fotográficas (APA 7.ª Ed.)", level=2)
-            for item in meta_inf["imagenes"]:
-                img_mem = io.BytesIO()
-                item["image_obj"].save(img_mem, format='PNG')
-                img_mem.seek(0)
+            # Anexo Fotográfico en Word (Centrado con formato APA)
+            if meta_inf["imagenes"]:
+                doc.add_page_break()
+                p_anexo = doc.add_heading("Evidencias Fotográficas", level=2)
+                p_anexo.runs[0].font.color.rgb = RGBColor(15, 23, 42)
                 
-                doc.add_picture(img_mem, width=Inches(5.0))
-                p_cap = doc.add_paragraph()
-                p_cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                r_cap1 = p_cap.add_run(f"Figura {item['index']}.\n")
-                r_cap1.font.bold = True
-                r_cap1.font.size = Pt(9.5)
-                r_cap2 = p_cap.add_run(f"{item['description']}\nFuente: Elaboración propia.")
-                r_cap2.font.italic = True
-                r_cap2.font.size = Pt(9.5)
-                doc.add_paragraph()
+                for item in meta_inf["imagenes"]:
+                    img_mem = io.BytesIO()
+                    item["image_obj"].save(img_mem, format='PNG')
+                    img_mem.seek(0)
+                    
+                    p_img = doc.add_paragraph()
+                    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p_img.add_run().add_picture(img_mem, width=Inches(4.5))
+                    
+                    p_cap = doc.add_paragraph()
+                    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    r_c1 = p_cap.add_run(f"Figura {item['index']}. ")
+                    r_c1.font.bold = True
+                    r_c1.font.size = Pt(9.5)
+                    r_c2 = p_cap.add_run(f"{item['description']}\n")
+                    r_c2.font.italic = True
+                    r_c2.font.size = Pt(9.5)
+                    r_c3 = p_cap.add_run("Fuente: Elaboración propia.")
+                    r_c3.font.size = Pt(9.5)
+                    doc.add_paragraph()
 
-            # Guardar en búfer
+            # Guardar archivo Word en búfer
             docx_buffer = io.BytesIO()
             doc.save(docx_buffer)
             docx_buffer.seek(0)
             
             st.download_button(
-                label="⬇️ Descargar Documento .docx",
+                label="⬇️ Descargar Archivo .docx",
                 data=docx_buffer,
                 file_name=f"Informe_Tecnico_{meta_inf['tag']}_{meta_inf['fecha']}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
     # --------------------------------------------------------------------------
-    # EXPORTACIÓN A PDF (REPORTLAB - SIN ERRORES DE DISCO EN NUBE)
+    # EXPORTACIÓN A PDF (REPORTLAB - JUSTIFICADO, CENTRADO, VIÑETAS Y APA)
     # --------------------------------------------------------------------------
-    with col_exp_pdf:
-        if st.button("📥 Generar Documento PDF (.pdf)", use_container_width=True):
+    with col_p:
+        if st.button("📥 Descargar Informe en PDF (.pdf)", use_container_width=True):
             pdf_buffer = io.BytesIO()
             doc_pdf = SimpleDocTemplate(
                 pdf_buffer,
@@ -527,70 +507,80 @@ if "informe_generado" in st.session_state:
             
             styles = getSampleStyleSheet()
             
-            # Estilos Personalizados para ReportLab
+            # Estilos personalizados para PDF con justificación e interlineado corporativo
             style_title = ParagraphStyle(
                 'DocTitle',
                 parent=styles['Heading1'],
-                fontSize=20,
-                leading=24,
+                fontSize=18,
+                leading=22,
                 textColor=colors.HexColor('#0F172A'),
-                alignment=1,
-                spaceAfter=15
+                alignment=TA_CENTER,
+                spaceAfter=12
             )
             style_subtitle = ParagraphStyle(
                 'DocSubTitle',
                 parent=styles['Normal'],
-                fontSize=12,
-                leading=16,
+                fontSize=11,
+                leading=15,
                 textColor=colors.HexColor('#1D4ED8'),
-                alignment=1,
-                spaceAfter=30
+                alignment=TA_CENTER,
+                spaceAfter=25
             )
             style_h2 = ParagraphStyle(
                 'DocH2',
                 parent=styles['Heading2'],
-                fontSize=13,
-                leading=17,
+                fontSize=12,
+                leading=16,
                 textColor=colors.HexColor('#0F172A'),
-                spaceBefore=14,
+                spaceBefore=12,
                 spaceAfter=6
             )
             style_body = ParagraphStyle(
                 'DocBody',
                 parent=styles['Normal'],
-                fontSize=9.5,
-                leading=13.5,
+                fontSize=10,
+                leading=14,
                 textColor=colors.HexColor('#334155'),
-                spaceAfter=8
+                alignment=TA_JUSTIFY,
+                spaceAfter=6
+            )
+            style_bullet = ParagraphStyle(
+                'DocBullet',
+                parent=styles['Normal'],
+                fontSize=10,
+                leading=14,
+                textColor=colors.HexColor('#334155'),
+                alignment=TA_JUSTIFY,
+                leftIndent=15,
+                spaceAfter=4
             )
             style_caption = ParagraphStyle(
                 'DocCaption',
                 parent=styles['Normal'],
-                fontSize=8.5,
-                leading=11,
+                fontSize=9,
+                leading=12,
                 textColor=colors.HexColor('#475569'),
-                spaceAfter=12
+                alignment=TA_CENTER,
+                spaceAfter=15
             )
 
             story = []
             
             # PORTADA PDF
-            story.append(Paragraph(f"<b>{meta_inf['empresa'].upper()}</b>", style_caption))
-            story.append(Paragraph(f"{meta_inf['unidad']}", style_caption))
+            story.append(Paragraph(f"<b>{meta_inf['empresa'].upper()} | {meta_inf['unidad']}</b>", ParagraphStyle('SubC', parent=style_body, alignment=TA_RIGHT, fontSize=8.5, textColor=colors.HexColor('#64748B'))))
             story.append(Spacer(1, 40))
             story.append(Paragraph(f"<b>INFORME TÉCNICO DE MANTENIMIENTO</b><br/>{meta_inf['tipo'].upper()}", style_title))
             story.append(Paragraph(f"<b>ACTIVO: {meta_inf['tag']} - {meta_inf['equipo']}</b>", style_subtitle))
             story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#1D4ED8'), spaceAfter=20))
             
-            # Tabla Metadatos en PDF
+            # Tabla de metadatos PDF
             meta_table_data = [
                 [Paragraph("<b>Fecha de Emisión:</b>", style_body), Paragraph(meta_inf["fecha"], style_body)],
                 [Paragraph("<b>Horas de Operación:</b>", style_body), Paragraph(f"{meta_inf['horas']} hrs", style_body)],
-                [Paragraph("<b>Elaborado por:</b>", style_body), Paragraph(f"{meta_inf['elaborador']}", style_body)],
-                [Paragraph("<b>Cargo:</b>", style_body), Paragraph(f"{meta_inf['cargo']}", style_body)],
-                [Paragraph("<b>Revisado / Aprobado:</b>", style_body), Paragraph(f"{meta_inf['revisador']}", style_body)],
+                [Paragraph("<b>Elaborado por:</b>", style_body), Paragraph(f"{meta_inf['elaborador']} ({meta_inf['cargo']})", style_body)],
+                [Paragraph("<b>Estándar:</b>", style_body), Paragraph("APA 7.ª Edición / Ingeniería de Mantenimiento", style_body)],
             ]
-            t_meta = Table(meta_table_data, colWidths=[150, 300])
+            t_meta = Table(meta_table_data, colWidths=[130, 370])
             t_meta.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
                 ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
@@ -600,22 +590,25 @@ if "informe_generado" in st.session_state:
             story.append(t_meta)
             story.append(PageBreak())
 
-            # CUERPO DEL INFORME EN PDF
+            # CUERPO DEL INFORME EN PDF (Con manejo de viñetas y párrafos justificados)
             for line in informe_md.split('\n'):
                 line_clean = line.strip()
                 if line_clean.startswith("## "):
                     story.append(Paragraph(f"<b>{line_clean.replace('## ', '')}</b>", style_h2))
-                    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceAfter=8))
+                    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceAfter=6))
                 elif line_clean.startswith("# "):
                     story.append(Paragraph(f"<b>{line_clean.replace('# ', '')}</b>", style_h2))
+                elif line_clean.startswith("* ") or line_clean.startswith("- "):
+                    bullet_text = f"• {line_clean[2:].strip()}"
+                    story.append(Paragraph(bullet_text, style_bullet))
                 elif line_clean:
                     story.append(Paragraph(line_clean, style_body))
 
-            # ANEXO FOTOGRÁFICO EN PDF (PROCESADO 100% EN MEMORIA CON BYTESIO)
+            # ANEXO FOTOGRÁFICO EN PDF (Centrado y con formato APA)
             if meta_inf["imagenes"]:
                 story.append(PageBreak())
                 story.append(Paragraph("<b>Evidencias Fotográficas (Estándar APA 7.ª Ed.)</b>", style_h2))
-                story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1D4ED8'), spaceAfter=12))
+                story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1D4ED8'), spaceAfter=15))
                 
                 for item in meta_inf["imagenes"]:
                     img_bytes_io = io.BytesIO()
@@ -623,18 +616,18 @@ if "informe_generado" in st.session_state:
                     rgb_image.save(img_bytes_io, format='JPEG', quality=90)
                     img_bytes_io.seek(0)
                     
-                    story.append(RLImage(img_bytes_io, width=420, height=280))
-                    story.append(Spacer(1, 4))
+                    story.append(RLImage(img_bytes_io, width=400, height=260))
+                    story.append(Spacer(1, 6))
                     caption_text = f"<b>Figura {item['index']}.</b> <i>{item['description']}</i><br/><b>Fuente:</b> Elaboración propia."
                     story.append(Paragraph(caption_text, style_caption))
-                    story.append(Spacer(1, 12))
+                    story.append(Spacer(1, 10))
 
-            # Construcción del documento PDF
+            # Construcción del PDF
             doc_pdf.build(story)
             pdf_buffer.seek(0)
             
             st.download_button(
-                label="⬇️ Descargar Documento .pdf",
+                label="⬇️ Descargar Archivo .pdf",
                 data=pdf_buffer,
                 file_name=f"Informe_Tecnico_{meta_inf['tag']}_{meta_inf['fecha']}.pdf",
                 mime="application/pdf"
