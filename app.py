@@ -1,7 +1,7 @@
 """
 ================================================================================
 SISTEMA INSTITUCIONAL DE INFORMES TÉCNICOS DE MANTENIMIENTO (SITM)
-Versión: 6.0.0 - Edición Gerencial Avanzada con Gestión de Logos y Editor Previo
+Versión: 7.0.0 - Edición Optimizada para Personal Técnico & Gerencia
 Desarrollado para: Informes Gerenciales de Alta Confiabilidad Industrial
 Diseñado por: Roger Huamani
 ================================================================================
@@ -82,12 +82,15 @@ st.markdown("""
         display: inline-block;
     }
     .watermark-footer {
-        font-size: 0.75rem;
-        color: #64748B;
+        font-size: 0.8rem;
+        color: #1E3A8A;
+        font-weight: 700;
         text-align: center;
         margin-top: 2rem;
-        border-top: 1px solid #E2E8F0;
-        padding-top: 10px;
+        border-top: 2px solid #E2E8F0;
+        padding-top: 12px;
+        background-color: #F1F5F9;
+        border-radius: 6px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -111,7 +114,7 @@ def inicializar_cliente_gemini():
 # 3. UTILIDADES DE PARSEO Y LIMPIEZA DE MARKDOWN
 # ==============================================================================
 def limpiar_markdown_para_docx(doc_instance, texto_linea):
-    """Procesa marcas Markdown (**negrita**) y las añade a Word con tipografía negra legible."""
+    """Procesa marcas Markdown (**negrita**) y las añade a Word con tipografía legible."""
     p = doc_instance.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.line_spacing = 1.15
@@ -124,13 +127,13 @@ def limpiar_markdown_para_docx(doc_instance, texto_linea):
             run.font.bold = True
             run.font.name = 'Arial'
             run.font.size = Pt(10)
-            run.font.color.rgb = RGBColor(15, 23, 42) # Azul oscuro / Negro formal
+            run.font.color.rgb = RGBColor(30, 58, 138) # Azul oscuro formal
         else:
             if parte:
                 run = p.add_run(parte)
                 run.font.name = 'Arial'
                 run.font.size = Pt(10)
-                run.font.color.rgb = RGBColor(30, 41, 59) # Texto negro con contraste adecuado
+                run.font.color.rgb = RGBColor(30, 41, 59) # Texto negro con alto contraste
     return p
 
 def limpiar_markdown_para_pdf(texto_linea):
@@ -149,8 +152,6 @@ class CanvasGerencialLogos(canvas.Canvas):
         self._saved_page_states = []
         self.empresa_meta = "COMPAÑÍA INDUSTRIAL"
         self.codigo_doc = "SITM-GER-01"
-        self.logo1_img = None
-        self.logo2_img = None
 
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -169,7 +170,7 @@ class CanvasGerencialLogos(canvas.Canvas):
         self.setFont("Helvetica-Bold", 8)
         self.setFillColor(colors.HexColor("#1E3A8A"))
         
-        # Cabecera superior institucional en páginas subsiguientes (o portada)
+        # Cabecera superior institucional en páginas subsiguientes
         if self._pageNumber > 1:
             self.drawString(54, 755, f"{self.empresa_meta.upper()} — INFORME EJECUTIVO DE MANTENIMIENTO")
             self.drawRightString(558, 755, f"REF: {self.codigo_doc}")
@@ -208,19 +209,19 @@ with st.sidebar:
     if logo_file_1 is not None:
         st.session_state["persistent_logo_1"] = logo_file_1
         
-    logo_file_2 = st.file_uploader("Logo Secundario (Grupo / Filial)", type=["png", "jpg", "jpeg"], key="uploader_logo_2")
+    logo_file_2 = st.file_uploader("Logo Secundario (Filial / Grupo)", type=["png", "jpg", "jpeg"], key="uploader_logo_2")
     if logo_file_2 is not None:
         st.session_state["persistent_logo_2"] = logo_file_2
         
     if "persistent_logo_1" in st.session_state:
-        st.success("✔ Logo 1 cargado en sesión.")
+        st.success("✔ Logo 1 activo en sesión.")
     if "persistent_logo_2" in st.session_state:
-        st.success("✔ Logo 2 cargado en sesión.")
+        st.success("✔ Logo 2 activo en sesión.")
 
     st.markdown("---")
     st.markdown("#### 🏢 Datos Organizacionales")
     empresa_nombre = st.text_input("Compañía / Planta", "ORICA")
-    asunto_informe = st.text_input("Asunto / Título del Informe", "Mantenimiento Correctivo y Diagnóstico de Falla en Horno LEWCO N°1")
+    asunto_informe = st.text_input("Asunto / Título del Informe", "Mantenimiento Correctivo y Diagnóstico de Falla Mecánica")
     area_proceso = st.text_input("Área o Proceso", "Detonadores")
     codigo_documento = st.text_input("Código / Referencia OT", "OT-98421-2026")
     
@@ -235,17 +236,17 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("#### 👤 Responsables")
-    responsables_ejecucion = st.text_area("Responsables de Ejecución", "Hector Preciado, Lizandro Paucar, Julio Nunjar")
+    responsables_ejecucion = st.text_input("Responsables de Ejecución", "Hector Preciado, Lizandro Paucar")
     responsable_informe = st.text_input("Responsable del Informe", "Ing. Roger Huamani Torres")
 
-    # Marca de agua en lateral solicitada
+    # Marca de agua en lateral solicitada (Observación 6)
     st.markdown('<div class="watermark-footer">Software diseñado por Roger Huamani</div>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 6. INTERFAZ PRINCIPAL DE ENTRADA
+# 6. INTERFAZ PRINCIPAL DE ENTRADA (CAMPOS TÉCNICOS OPTIMIZADOS A MÁXIMO 2)
 # ==============================================================================
 st.markdown('<div class="main-header">Generador Ejecutivo de Informes de Mantenimiento</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Plataforma orientada a Gerencia: Ingrese los datos, adjunte imágenes específicas por sección, valide y edite el informe antes de exportar.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Plataforma optimizada: Ingrese la información clave en los campos simplificados, adjunte imágenes por sección y valide antes de exportar.</div>', unsafe_allow_html=True)
 
 tab_datos, tab_plan, tab_evidencias, tab_preview = st.tabs([
     "📝 1. Datos y Contexto Técnico", 
@@ -255,7 +256,7 @@ tab_datos, tab_plan, tab_evidencias, tab_preview = st.tabs([
 ])
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: DATOS Y CONTEXTO TÉCNICO
+# PESTAÑA 1: DATOS Y CONTEXTO TÉCNICO (CAMPOS OPTIMIZADOS A MÁXIMO 2)
 # ------------------------------------------------------------------------------
 with tab_datos:
     st.markdown('<div class="card-container">', unsafe_allow_html=True)
@@ -264,37 +265,47 @@ with tab_datos:
     with col_e1:
         equipo_intervenido = st.text_input("Equipo Intervenido", "Horno LEWCO N°1")
     with col_e2:
-        codigo_tag = st.text_input("Código o TAG del Equipo", "H4 (asociado a Horno LEWCO 3, información preliminar)")
+        codigo_tag = st.text_input("Código o TAG del Equipo", "H4")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 1. Detalle Técnico Optimizado a Máximo 2 Campos
     st.markdown('<div class="card-container">', unsafe_allow_html=True)
-    st.markdown("### 🔹 Detalle Técnico para el Reporte Gerencial")
+    st.markdown("### 🔹 Detalle Técnico para el Reporte Gerencial (Optimizado)")
+    st.info("💡 Ingrese los detalles esenciales de la falla y los trabajos ejecutados. Con estos dos campos la IA desarrollará el análisis técnico completo.")
     
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        condicion_reportada = st.text_area("Condición Reportada / Síntoma Inicial", "Operador reporta condición de vibración elevada en el sistema de extracción.", height=110)
-        condicion_encontrada = st.text_area("Condición Encontrada (Real)", "Desgaste avanzado en rodamientos del ventilador de extracción y desalineación en acoplamiento.", height=110)
-        diagnostico_realizado = st.text_area("Diagnóstico Realizado", "Análisis de vibraciones confirma desbalance dinámico y fatiga en soportes mecánicos.", height=110)
-        alcance_trabajos = st.text_area("Alcance de Trabajos Ejecutados", "Desmontaje de conjunto rotativo, reemplazo de rodamientos SKF, alineación láser y balanceo dinámico in-situ.", height=110)
-        
+        detalle_falla_tecnico = st.text_area(
+            "1. Descripción de la Falla, Hallazgos y Diagnóstico", 
+            placeholder="Ej: Reporte de vibración elevada. Hallazgo: Desgaste en rodamientos del ventilador y desalineación. Diagnóstico: Desbalance dinámico.", 
+            height=160
+        )
     with col_c2:
-        impacto_operativo = st.text_area("Impacto Operacional (Horas indisponibilidad, producción)", "6 horas de indisponibilidad. Demora menor en lote de proceso de secado sin afectar entrega final.", height=110)
-        impactos_varios = st.text_area("Impactos (Seguridad, Ambiental, Económico Estimado)", "Seguridad: Cero incidentes. Económico: $1,200 USD entre repuestos y horas hombre de taller.", height=110)
-        causa_raiz_info = st.text_area("Análisis de Causa Raíz (Inmediata, Básica, Raíz y Metodología)", "Inmediata: Alta vibración. Básica: Lubricación deficiente acumulada. Raíz: Intervalo de engrase desactualizado. Metodología: 5 Porqués.", height=110)
-        recursos_costos = st.text_area("Recursos y Costos (Personal, Materiales, Costos USD)", "Personal: 3 técnicos (Hector Preciado, Lizandro Paucar, Julio Nunjar). Costo total estimado: $1,200 USD.", height=110)
+        detalle_acciones_tecnico = st.text_area(
+            "2. Trabajos Ejecutados, Impactos y Causa Raíz", 
+            placeholder="Ej: Alcance: Desmontaje, cambio de rodamientos SKF, alineación láser y balanceo. Impacto: 6 hrs parada, $1200 USD. Causa raíz: Falta de engrase periódico.", 
+            height=160
+        )
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 2. Estado, Riesgos y Conclusiones Gerenciales Optimizado a Máximo 2 Campos
     st.markdown('<div class="card-container">', unsafe_allow_html=True)
-    st.markdown("### 🔹 Estado, Riesgos y Conclusiones Gerenciales")
+    st.markdown("### 🔹 Estado, Riesgos y Conclusiones Gerenciales (Optimizado)")
+    st.info("💡 Indique el estado operativo actual y las conclusiones ejecutivas para la gerencia.")
+    
     col_s1, col_s2 = st.columns(2)
     with col_s1:
-        estado_equipo = st.selectbox("Estado Actual del Equipo", ["Operativo", "Operativo con restricciones", "Fuera de servicio", "En observación o monitoreo"])
-        nivel_riesgo = st.selectbox("Nivel de Riesgo Actual", ["Bajo", "Medio", "Alto", "Crítico"])
-        restricciones_op = st.text_input("Restricciones Operacionales", "Ninguna. Operación normal al 100% de capacidad.")
-        recomendaciones_inmediatas = st.text_area("Recomendaciones Inmediatas", "Verificar temperatura de chumaceras a las 24 horas de arranque.", height=90)
+        estado_riesgos_tecnico = st.text_area(
+            "1. Estado Actual, Nivel de Riesgo y Restricciones", 
+            placeholder="Ej: Equipo Operativo al 100%. Nivel de riesgo bajo tras la intervención. Sin restricciones operacionales.", 
+            height=130
+        )
     with col_s2:
-        riesgos_remanentes = st.text_area("Riesgos Pendientes y Consecuencias Potenciales", "Ninguno de alta criticidad tras el reemplazo y balanceo exitoso.", height=90)
-        conclusion_gerencial = st.text_area("Conclusión Ejecutiva y Beneficio Esperado", "Intervención completada satisfactoriamente, restaurando los parámetros nominales de vibración y confiabilidad del horno.", height=90)
+        conclusiones_recomendaciones_tecnico = st.text_area(
+            "2. Conclusión Ejecutiva y Recomendaciones Inmediatas", 
+            placeholder="Ej: Intervención cerrada satisfactoriamente. Recomendación: Verificar temperatura de chumaceras a las 24 hrs.", 
+            height=130
+        )
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
@@ -306,7 +317,7 @@ with tab_plan:
     
     if "acciones_plan" not in st.session_state:
         st.session_state["acciones_plan"] = [
-            {"accion": "Actualizar frecuencia de lubricación en pauta preventiva del Horno LEWCO.", "responsable": "Hector Preciado", "fecha": "2026-11-01", "estado": "Pendiente"}
+            {"accion": "Actualizar frecuencia de lubricación en pauta preventiva del equipo.", "responsable": "Hector Preciado", "fecha": "2026-11-01", "estado": "Pendiente"}
         ]
         
     col_a1, col_a2, col_a3, col_a4 = st.columns([3, 2, 2, 2])
@@ -337,19 +348,23 @@ with tab_plan:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: EVIDENCIAS E IMÁGENES ESPECÍFICAS POR SECCIÓN
+# PESTAÑA 3: EVIDENCIAS E IMÁGENES ESPECÍFICAS POR SECCIÓN (OBSERVACIÓN 3)
 # ------------------------------------------------------------------------------
 with tab_evidencias:
     st.markdown('<div class="card-container">', unsafe_allow_html=True)
     st.markdown("### 📷 Carga de Imágenes con Comentarios por Sección")
-    st.info("Puede adjuntar la cantidad de imágenes que necesite, especificando a qué sección corresponden (Descripción de Falla o Acciones Ejecutidas).")
+    st.info("Puede adjuntar las imágenes que necesite y asignarlas directamente a los apartados obligatorios: **DESCRIPCIÓN DE LA FALLA O INTERVENCIÓN** o **ACCIONES EJECUTADAS** (además del anexo general).")
     
     seccion_destino = st.selectbox(
         "Seleccione la sección donde desea incrustar la imagen:",
-        ["3. DESCRIPCIÓN DE LA FALLA O INTERVENCIÓN", "6. ACCIONES EJECUTADAS", "8. EVIDENCIAS FOTOGRÁFICAS (ANEXO GENERAL)"]
+        [
+            "3. DESCRIPCIÓN DE LA FALLA O INTERVENCIÓN", 
+            "6. ACCIONES EJECUTADAS", 
+            "8. EVIDENCIAS FOTOGRÁFICAS (ANEXO GENERAL)"
+        ]
     )
     
-    img_subida_seccion = st.file_uploader("Cargar fotografía para esta sección", type=["jpg", "jpeg", "png"], key="uploader_sec_img")
+    img_subida_seccion = st.file_uploader("Cargar fotografía", type=["jpg", "jpeg", "png"], key="uploader_sec_img")
     comentario_img_sec = st.text_input("Comentario / Descripción técnica de la imagen:")
     estado_img_sec = st.selectbox("Estado de la intervención:", ["Antes", "Durante", "Después"])
     
@@ -365,7 +380,7 @@ with tab_evidencias:
                 "descripcion": comentario_img_sec,
                 "estado": estado_img_sec
             })
-            st.success("¡Imagen agregada exitosamente a la sección correspondiente!")
+            st.success("¡Imagen agregada exitosamente a la sección!")
         else:
             st.error("Por favor, cargue una imagen y escriba su respectivo comentario.")
             
@@ -382,12 +397,12 @@ with tab_evidencias:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 4: VALIDACIÓN, EDICIÓN Y EXPORTACIÓN
+# PESTAÑA 4: VALIDACIÓN, EDICIÓN Y EXPORTACIÓN (OBSERVACIÓN 2)
 # ------------------------------------------------------------------------------
 with tab_preview:
     st.markdown('<div class="card-container">', unsafe_allow_html=True)
-    st.markdown("### 🚀 Generación, Validación y Edición del Informe")
-    st.info("Haga clic en generar para redactar el informe con IA. Una vez generado, **podrá editar el contenido directamente en el cuadro de texto** antes de descargarlo en Word o PDF.")
+    st.markdown("### 🚀 Generación y Validación del Informe")
+    st.info("Haga clic en generar para redactar el informe con IA. Posteriormente, **podrá editar o corregir cualquier texto directamente en el editor** antes de generar los documentos oficiales en Word o PDF.")
     
     btn_generar = st.button("✨ Generar Borrador del Informe con IA", type="primary", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -397,14 +412,15 @@ with tab_preview:
         if not cliente_ai:
             st.error("❌ Error de Autenticación: Configure su clave API de Gemini en Streamlit Secrets o en la barra lateral.")
         else:
-            with st.spinner("🔄 Procesando datos y redactando informe ejecutivo gerencial..."):
+            with st.spinner("🔄 Procesando datos y redactando informe ejecutivo gerencial optimizado..."):
                 
+                # Agrupar imágenes por sección para inyectarlas al prompt de la IA
                 imgs_falla = [i for i in st.session_state.get("imagenes_por_seccion", []) if "FALLA" in i["seccion"]]
                 imgs_acciones = [i for i in st.session_state.get("imagenes_por_seccion", []) if "ACCIONES" in i["seccion"]]
                 imgs_anexo = [i for i in st.session_state.get("imagenes_por_seccion", []) if "EVIDENCIAS" in i["seccion"]]
                 
-                falla_img_str = "\n".join([f"- [Imagen Falla - {i['estado']}]: {i['descripcion']}" for i in imgs_falla])
-                acc_img_str = "\n".join([f"- [Imagen Acción - {i['estado']}]: {i['descripcion']}" for i in imgs_acciones])
+                falla_img_str = "\n".join([f"- [Imagen Falla - {i['estado']}]: {i['descripcion']}" for i in imgs_falla]) if imgs_falla else "Ninguna."
+                acc_img_str = "\n".join([f"- [Imagen Acción - {i['estado']}]: {i['descripcion']}" for i in imgs_acciones]) if imgs_acciones else "Ninguna."
                 
                 acciones_str = "\n".join([f"- [ ] {a['accion']} | Responsable: {a['responsable']} | Fecha: {a['fecha']} | Estado: {a['estado']}" for a in st.session_state.get("acciones_plan", [])])
                 
@@ -413,11 +429,11 @@ Actúa como un Especialista Senior en Gestión de Mantenimiento Industrial, Conf
 Genera un INFORME EJECUTIVO DE MANTENIMIENTO profesional, estructurado rigurosamente en los 12 apartados solicitados.
 
 REGLAS ESTRICTAS DE REDACCIÓN:
-- NO incluyas frases automáticas como "Información no disponible" o explicaciones sobre datos faltantes. Si un campo no tiene detalle extenso, redáctalo de forma concisa y directa basada estrictamente en los datos de entrada.
+- PROHIBIDO incluir mensajes automáticos como "Información no disponible" o referencias a datos faltantes. Todo el contenido debe redactarse de manera fluida y profesional basándose en los datos provistos.
 - Lenguaje ejecutivo, claro, preciso, objetivo y basado en hechos orientados a gerencia.
-- Redacta principalmente en formato de PÁRRAFOS formales y bien desarrollados. Utiliza viñetas (con asteriscos `*`) UNICAMENTE cuando sea estrictamente necesario para aportar claridad.
+- Redacta principalmente en formato de PÁRRAFOS formales y bien desarrollados. Utiliza viñetas (con asteriscos `*`) UNICAMENTE cuando sea estrictamente necesario.
 
-DATOS DE ENTRADA:
+DATOS DE ENTRADA SIMPLIFICADOS:
 - Compañía: {empresa_nombre}
 - Asunto: {asunto_informe}
 - Área o Proceso: {area_proceso}
@@ -429,22 +445,12 @@ DATOS DE ENTRADA:
 - Fecha Emisión: {fecha_emision}
 - Responsables Ejecución: {responsables_ejecucion}
 - Responsable Informe: {responsable_informe}
-- Condición Reportada: {condicion_reportada}
-- Condición Encontrada: {condicion_encontrada}
-- Diagnóstico: {diagnostico_realizado}
-- Alcance: {alcance_trabajos}
-- Imágenes en Falla: {falla_img_str}
-- Impacto Operativo: {impacto_operativo}
-- Impactos Varios: {impactos_varios}
-- Causa Raíz: {causa_raiz_info}
-- Recursos y Costos: {recursos_costos}
-- Imágenes en Acciones: {acc_img_str}
-- Estado del Equipo: {estado_equipo}
-- Nivel de Riesgo: {nivel_riesgo}
-- Restricciones: {restricciones_op}
-- Recomendaciones Inmediatas: {recomendaciones_inmediatas}
-- Riesgos Remanentes: {riesgos_remanentes}
-- Conclusión Gerencial: {conclusion_gerencial}
+- Detalle Técnico Falla (Campo 1): {detalle_falla_tecnico}
+- Imágenes asociadas a Falla: {falla_img_str}
+- Detalle Técnico Acciones (Campo 2): {detalle_acciones_tecnico}
+- Imágenes asociadas a Acciones: {acc_img_str}
+- Estado y Riesgos (Campo 3): {estado_riesgos_tecnico}
+- Conclusiones y Recomendaciones (Campo 4): {conclusiones_recomendaciones_tecnico}
 - Acciones del Plan: {acciones_str}
 
 ESTRUCTURA OBLIGATORIA (Utiliza exactamente estos 12 títulos en formato Markdown H1 `#`):
@@ -482,7 +488,7 @@ ESTRUCTURA OBLIGATORIA (Utiliza exactamente estos 12 títulos en formato Markdow
                         "imagenes": st.session_state.get("imagenes_por_seccion", []),
                         "acciones": st.session_state.get("acciones_plan", [])
                     }
-                    st.success("¡Borrador generado con éxito! Puede validarlo y editarlo a continuación antes de exportar.")
+                    st.success("¡Borrador generado con éxito! Revise y edite el texto a continuación antes de descargar.")
                 except Exception as e:
                     st.error(f"Error al conectar con la API de Gemini: {e}")
 
@@ -494,15 +500,13 @@ if "texto_informe" in st.session_state:
     st.markdown("## ✍️ Validación y Edición del Contenido del Informe")
     st.info("💡 Puede modificar cualquier sección, corregir redacción o ajustar párrafos directamente en este cuadro de texto antes de generar los documentos oficiales Word o PDF.")
     
-    # Campo de edición interactivo (Observación 2)
+    # Editor interactivo (Observación 2)
     texto_editado = st.text_area(
         "Editor de Contenido del Informe",
         value=st.session_state["texto_informe"],
-        height=450,
+        height=480,
         key="editor_texto_informe_activo"
     )
-    
-    # Actualizar texto en sesión si el usuario edita
     st.session_state["texto_informe"] = texto_editado
 
     st.markdown("---")
@@ -512,7 +516,7 @@ if "texto_informe" in st.session_state:
     metadatos = st.session_state["meta_informe"]
     
     # --------------------------------------------------------------------------
-    # 7.1 EXPORTACIÓN A WORD (.DOCX) - CON TABLA DE DATOS GENERALES
+    # 7.1 EXPORTACIÓN A WORD (.DOCX) - TABLA DE DATOS GENERALES + ASUNTO
     # --------------------------------------------------------------------------
     with col_w:
         if st.button("📥 Descargar Reporte Word (.docx)", use_container_width=True):
@@ -524,7 +528,7 @@ if "texto_informe" in st.session_state:
                 sec.left_margin = Inches(1)
                 sec.right_margin = Inches(1)
 
-            # Portada / Cabecera Word
+            # Cabecera Word
             p_sup = doc.add_paragraph()
             p_sup.alignment = WD_ALIGN_PARAGRAPH.RIGHT
             r_sup = p_sup.add_run(f"{metadatos['empresa']} | {metadatos['area']}\nREF: {metadatos['ot']}")
@@ -549,7 +553,7 @@ if "texto_informe" in st.session_state:
             
             doc.add_paragraph()
             
-            # Tabla de Datos Generales en Word (Observación 1)
+            # Tabla de Datos Generales en Word con Asunto (Observación 1)
             t_meta = doc.add_table(rows=9, cols=2)
             t_meta.alignment = WD_TABLE_ALIGNMENT.CENTER
             datos_t = [
@@ -557,7 +561,7 @@ if "texto_informe" in st.session_state:
                 ("Asunto:", metadatos["asunto"]),
                 ("Área o Proceso:", metadatos["area"]),
                 ("Equipo Intervenido:", metadatos["equipo"]),
-                ("TAG (referencia):", metadatos["tag"]),
+                ("TAG:", metadatos["tag"]),
                 ("OT Principal:", metadatos["ot"]),
                 ("Tipo de Mantenimiento:", metadatos["tipo"]),
                 ("Fecha Intervención:", metadatos["intervencion"]),
@@ -578,7 +582,7 @@ if "texto_informe" in st.session_state:
                 line_text = line.strip()
                 if line_text.startswith("# "):
                     h = doc.add_heading(line_text.replace("# ", "").replace("## ", ""), level=1)
-                    h.runs[0].font.color.rgb = RGBColor(30, 58, 138) # Azul oscuro en títulos
+                    h.runs[0].font.color.rgb = RGBColor(30, 58, 138)
                 elif line_text.startswith("## "):
                     h = doc.add_heading(line_text.replace("## ", ""), level=2)
                     h.runs[0].font.color.rgb = RGBColor(30, 58, 138)
@@ -591,10 +595,9 @@ if "texto_informe" in st.session_state:
                     p_bullet.paragraph_format.line_spacing = 1.15
                     p_bullet.paragraph_format.space_after = Pt(3)
                 elif line_text:
-                    # Insertar imágenes específicas si corresponden a secciones de Falla o Acciones
                     limpiar_markdown_para_docx(doc, line_text)
 
-            # Inserción de tabla del Plan de Acción en Word si existe
+            # Plan de Acción en Word
             if metadatos["acciones"]:
                 doc.add_heading("Plan de Acción y Seguimiento", level=2)
                 t_act = doc.add_table(rows=len(metadatos["acciones"]) + 1, cols=4)
@@ -611,7 +614,7 @@ if "texto_informe" in st.session_state:
                     row_cells[2].text = act["fecha"]
                     row_cells[3].text = act["estado"]
 
-            # Evidencias Fotográficas generales o por sección en Word
+            # Evidencias en Word
             if metadatos["imagenes"]:
                 doc.add_heading("Anexo: Evidencias Fotográficas y Registros", level=2)
                 for item in metadatos["imagenes"]:
@@ -645,7 +648,7 @@ if "texto_informe" in st.session_state:
             )
 
     # --------------------------------------------------------------------------
-    # 7.2 EXPORTACIÓN A PDF (REPORTLAB) - CON TABLA DE DATOS GENERALES Y LOGOS
+    # 7.2 EXPORTACIÓN A PDF (REPORTLAB) - TABLA DE DATOS, ASUNTO Y LOGOS
     # --------------------------------------------------------------------------
     with col_p:
         if st.button("📥 Descargar Reporte PDF (.pdf)", use_container_width=True):
@@ -661,10 +664,10 @@ if "texto_informe" in st.session_state:
             
             styles = getSampleStyleSheet()
             
-            # Estilos con títulos en azul oscuro y textos en negro/gris de alto contraste (Observación 5)
+            # Estilos con títulos en azul oscuro y textos de alto contraste (Observación 5)
             style_title = ParagraphStyle(
                 'PdfTitle', parent=styles['Heading1'],
-                fontName='Helvetica-Bold', fontSize=16, leading=20,
+                fontName='Helvetica-Bold', fontSize=15, leading=19,
                 textColor=colors.HexColor('#1E3A8A'), alignment=TA_CENTER, spaceAfter=10
             )
             style_subtitle = ParagraphStyle(
@@ -714,7 +717,6 @@ if "texto_informe" in st.session_state:
                 logo_flowables.append(r_img2)
                 
             if logo_flowables:
-                # Tabla de cabecera con logos
                 t_logos_data = [[logo_flowables[0] if len(logo_flowables)>0 else "", logo_flowables[1] if len(logo_flowables)>1 else ""]]
                 t_logo_table = Table(t_logos_data, colWidths=[250, 254])
                 t_logo_table.setStyle(TableStyle([
@@ -730,14 +732,14 @@ if "texto_informe" in st.session_state:
             story.append(Paragraph(f"ACTIVO: {metadatos['tag']} - {metadatos['equipo']}", style_subtitle))
             story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#1E3A8A'), spaceAfter=15))
             
-            # Tabla de Datos Generales Formal en PDF (Observación 1)
+            # Tabla de Datos Generales en PDF con Asunto (Observación 1)
             t_data = [
                 [Paragraph("<b>Campo</b>", style_body), Paragraph("<b>Detalle</b>", style_body)],
                 [Paragraph("Compañía:", style_body), Paragraph(metadatos["empresa"], style_body)],
                 [Paragraph("Asunto:", style_body), Paragraph(metadatos["asunto"], style_body)],
                 [Paragraph("Área o Proceso:", style_body), Paragraph(metadatos["area"], style_body)],
                 [Paragraph("Equipo Intervenido:", style_body), Paragraph(metadatos["equipo"], style_body)],
-                [Paragraph("TAG (referencia):", style_body), Paragraph(metadatos["tag"], style_body)],
+                [Paragraph("TAG:", style_body), Paragraph(metadatos["tag"], style_body)],
                 [Paragraph("OT Principal:", style_body), Paragraph(metadatos["ot"], style_body)],
                 [Paragraph("Tipo de Mantenimiento:", style_body), Paragraph(metadatos["tipo"], style_body)],
                 [Paragraph("Fecha Intervención:", style_body), Paragraph(metadatos["intervencion"], style_body)],
@@ -753,7 +755,7 @@ if "texto_informe" in st.session_state:
             story.append(t_pdf)
             story.append(PageBreak())
 
-            # Procesamiento de líneas editadas para PDF
+            # Procesamiento de líneas para PDF
             for line in st.session_state["texto_informe"].split('\n'):
                 line_clean = line.strip()
                 if line_clean.startswith("# "):
@@ -768,7 +770,7 @@ if "texto_informe" in st.session_state:
                     texto_formateado = limpiar_markdown_para_pdf(line_clean)
                     story.append(Paragraph(texto_formateado, style_body))
 
-            # Tabla del Plan de Acción en PDF si existe
+            # Plan de Acción en PDF
             if metadatos["acciones"]:
                 story.append(Paragraph("<b>Plan de Acción y Seguimiento</b>", style_h1))
                 table_act_data = [[Paragraph("<b>Acción</b>", style_body), Paragraph("<b>Responsable</b>", style_body), Paragraph("<b>Fecha</b>", style_body), Paragraph("<b>Estado</b>", style_body)]]
@@ -789,7 +791,7 @@ if "texto_informe" in st.session_state:
                 story.append(t_acciones)
                 story.append(Spacer(1, 10))
 
-            # Anexo Fotográfico y por secciones en PDF
+            # Evidencias en PDF
             if metadatos["imagenes"]:
                 story.append(PageBreak())
                 story.append(Paragraph("<b>Evidencias Fotográficas y Registros</b>", style_h1))
